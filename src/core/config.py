@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     postgres_db: str = "taskmanager_db"
     postgres_user: str = "taskmanager"
     postgres_password: str = "taskmanager"
+    postgres_ssl: bool = False
 
     secret_key: str = "change-me-in-production-use-a-long-random-string"
     algorithm: str = "HS256"
@@ -21,11 +22,14 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        ssl = "?sslmode=require" if self.postgres_host != "localhost" else ""
         return (
             f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
-            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}{ssl}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
+
+    @property
+    def ssl_connect_args(self) -> dict:
+        return {"ssl": "require"} if self.postgres_ssl else {}
 
 
 settings = Settings()

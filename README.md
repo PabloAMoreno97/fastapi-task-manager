@@ -69,31 +69,76 @@ POST /auth/refresh   →  new access_token, old refresh_token revoked (rotation)
 
 ## Quick start (Docker)
 
+The simplest way to run everything. No local PostgreSQL or `.env` file required.
+
 ```bash
-cp .env.example .env          # adjust values if needed
 docker compose up --build
 ```
 
 API available at http://localhost:8000 — interactive docs at http://localhost:8000/docs
 
+> All database credentials are pre-configured in `docker-compose.yml` for local use.
+> On first start, Docker Compose waits for PostgreSQL to be healthy, then runs
+> `alembic upgrade head` automatically before starting the API.
+
 ---
 
-## Run locally
+## Run locally (API only, DB in Docker)
 
-**Requirements:** Python 3.12+, PostgreSQL 15+
+The recommended local dev setup: PostgreSQL runs in Docker, the API runs locally with hot reload.
+
+**Requirements:** Python 3.11+, Docker
 
 ```bash
-# Install dependencies
+# 1. Install dependencies
 pip install -r requirements-dev.txt
 
-# Configure environment
+# 2. Copy and configure environment
 cp .env.example .env
-# Edit .env with your PostgreSQL credentials
+# .env.example defaults (localhost / taskmanager / taskmanager) work as-is for Docker DB
 
-# Apply migrations
+# 3. Start only the PostgreSQL container
+docker compose up postgres -d
+# Wait ~5 seconds for it to be ready
+
+# 4. Apply migrations
 alembic upgrade head
 
-# Start server
+# 5. Start the API with hot reload
+uvicorn src.api.main:app --reload
+```
+
+API available at http://localhost:8000/docs
+
+To stop the database container when done:
+```bash
+docker compose down
+```
+
+---
+
+## Run locally (API + local PostgreSQL)
+
+If you have PostgreSQL installed locally, skip Docker and create the DB manually.
+
+**Requirements:** Python 3.11+, PostgreSQL 15+
+
+```bash
+# 1. Create the database and user
+psql -U postgres -c "CREATE USER taskmanager WITH PASSWORD 'taskmanager';"
+psql -U postgres -c "CREATE DATABASE taskmanager_db OWNER taskmanager;"
+
+# 2. Install dependencies
+pip install -r requirements-dev.txt
+
+# 3. Configure environment
+cp .env.example .env
+# Edit .env if your PostgreSQL credentials differ from the defaults
+
+# 4. Apply migrations
+alembic upgrade head
+
+# 5. Start the API
 uvicorn src.api.main:app --reload
 ```
 
@@ -101,17 +146,17 @@ uvicorn src.api.main:app --reload
 
 ## Run tests
 
-Tests use SQLite in-memory — no PostgreSQL needed.
+Tests use **SQLite in-memory** — no PostgreSQL or Docker needed.
 
 ```bash
 pip install -r requirements-dev.txt
 pytest -v
 ```
 
-Expected output: **22 tests passing**
+Expected output: **27 tests passing**
 
 ```
-tests/unit/test_security.py          (9 tests)  — password hashing, JWT creation/validation
+tests/unit/test_security.py          (8 tests)  — password hashing, JWT creation/decode
 tests/integration/test_auth.py       (9 tests)  — register, login, refresh, error cases
 tests/integration/test_tasks.py     (10 tests)  — CRUD, filters, pagination, isolation
 ```
@@ -187,8 +232,8 @@ SQLAlchemy enums use `VARCHAR` storage instead of PostgreSQL native `ENUM` types
 ### Alembic with async SQLAlchemy
 `migrations/env.py` uses the `connection.run_sync(do_run_migrations)` pattern to bridge the async engine with Alembic's synchronous migration runner.
 
-### SSL auto-configuration
-`config.py` appends `?sslmode=require` automatically when `POSTGRES_HOST != "localhost"`, so production connections to Neon work without extra configuration.
+### SSL configuration
+`POSTGRES_SSL=true` passes `ssl="require"` via asyncpg `connect_args` for production connections to Neon. Defaults to `false` so local and Docker setups work without extra configuration. Set it to `true` in the Render dashboard alongside the Neon credentials.
 
 ### `exclude_unset=True` for PATCH
 Pydantic's `model_dump(exclude_unset=True)` ensures only explicitly sent fields are updated. Sending `{}` leaves the task unchanged; sending `{"description": null}` explicitly clears the description.
