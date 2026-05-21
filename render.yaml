@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: fastapi-task-manager
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash scripts/start.sh
+    envVars:
+      - key: POSTGRES_HOST
+        sync: false
+      - key: POSTGRES_PORT
+        value: "5432"
+      - key: POSTGRES_DB
+        sync: false
+      - key: POSTGRES_USER
+        sync: false
+      - key: POSTGRES_PASSWORD
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
