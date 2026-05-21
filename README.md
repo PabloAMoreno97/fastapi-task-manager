@@ -238,14 +238,6 @@ SQLAlchemy enums use `VARCHAR` storage instead of PostgreSQL native `ENUM` types
 ### `exclude_unset=True` for PATCH
 Pydantic's `model_dump(exclude_unset=True)` ensures only explicitly sent fields are updated. Sending `{}` leaves the task unchanged; sending `{"description": null}` explicitly clears the description.
 
----
-
-## Deployment (Render + Neon)
-
-1. Create a [Neon](https://neon.tech) project and copy the host/credentials
-2. Deploy this repo on [Render](https://render.com) as a Web Service
-3. Set environment variables in Render dashboard (see `.env.example`)
-4. On first deploy, `start.sh` runs `alembic upgrade head` automatically
 
 ---
 
